@@ -62,7 +62,7 @@ MergeBot.processBody = function(body, callback) {
 				githubWrapper.grabComments(prNumber, function(result) {
 					var found = false;
 					for(var index in result) {
-    					if (result[index] == process.env.COMMIT_MESSAGE) {
+						if (result[index].toLowerCase() === process.env.COMMIT_MESSAGE.toLowerCase()) {
         					found = true;
         					break;
     					}
@@ -109,15 +109,34 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
 
 MergeBot.mergePR = function(githubWrapper, prNumber, callback) {
 	if (process.env.SHOULD_MERGE) {
-		githubWrapper.mergePR(prNumber, function(result) {
-			callback()
+		MergeBot.postAlertMessage(githubWrapper, prNumber, function() {
+			githubWrapper.mergePR(prNumber, function(result) {
+				callback()
+			})
 		})
-
 	} else {
-		githubWrapper.commentOnPullRequest(prNumber, "I am going to merge you", function(result) {
+		MergeBot.postAlertMessage(githubWrapper, prNumber, function() {
 			callback()
 		})
 	}
+}
+
+MergeBot.postAlertMessage = function(githubWrapper, prNumber, callback) {
+	var message = process.env.ALERT_MESSAGE
+
+	var gifs = ["https://media.giphy.com/media/143vPc6b08locw/giphy.gif",
+				"https://media1.giphy.com/media/Hw8vYF4DNRCKY/giphy.gif",
+				"https://media4.giphy.com/media/ta83CqOoRwfwQ/giphy.gif",
+				"https://media4.giphy.com/media/vMNoKKznOrUJi/giphy.gif",
+				"https://media0.giphy.com/media/DAC7d6rb1YHbq/giphy.gif",
+				"https://media.giphy.com/media/woWz6RL33Hm3S/giphy.gif",
+				"http://media.giphy.com/media/tDafHUBVrRKtq/giphy.gif"]
+	var randomIndex = Math.floor(Math.random() * gifs.length)
+	message = message + "\n![](" + gifs[randomIndex] + ")"
+
+	githubWrapper.commentOnPullRequest(prNumber, message, function(result) {
+		callback()
+	})
 }
 
 module.exports = MergeBot;
