@@ -7,6 +7,7 @@ MergeBot.processBody = function(body, callback) {
 
 	if (body.state != "success") {
 		callback("Nothing to do here!")
+		return
 	}
 
 	var prAuthor = body.sender.login
