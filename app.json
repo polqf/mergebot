@@ -1,0 +1,7 @@
+{
+  "name": "Mergebot",
+  "description": "Github bot that automagically merges PRs",
+  "repository": "https://github.com/poolqf/mergebot",
+  "keywords": ["node", "bot", "merge", "github"],
+  "image": "heroku/nodejs"
+}
