@@ -53,7 +53,7 @@ MergeBot.processBody = function(body, callback) {
 				return
 			}
 
-			MergeBot.processPRs(githubWrapper, result, 0, commitSHA, function(found, prNumber) {
+			MergeBot.processPRs(githubWrapper, result, 0, commitSHA, function(found, prNumber, branchName) {
 				if (found == false || prNumber == 0) {
     				callback("Did not find any PR with the given commit")
 					return
@@ -68,7 +68,11 @@ MergeBot.processBody = function(body, callback) {
     					}
     				}
     				if (found) {
-    					MergeBot.mergePR(githubWrapper, prNumber, function() {
+    					MergeBot.mergePR(githubWrapper, prNumber, branchName, function(error) {
+    						if (succeeded instanceof Error) { 
+								callback(error)
+								return
+							}
 							callback("Expected message found")
     					})
     				} else {
@@ -86,7 +90,9 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
 		return
 	}
 
-	var prNumber = prs[index].number
+	var pr = prs[index]
+	var prNumber = pr.number
+	var prRef = pr.head.ref
 	var currentIndex = index
 	var currentCallback = callback
 
@@ -98,8 +104,9 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
         		break;
     		}
     	}
+
     	if (found) {
-    		callback(found, prNumber)
+    		callback(found, prNumber, prRef)
     		return
     	}
 
@@ -107,11 +114,22 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
 	})
 }
 
-MergeBot.mergePR = function(githubWrapper, prNumber, callback) {
+MergeBot.mergePR = function(githubWrapper, prNumber, branchName, callback) {
 	if (process.env.SHOULD_MERGE) {
 		MergeBot.postAlertMessage(githubWrapper, prNumber, function() {
 			githubWrapper.mergePR(prNumber, function(result) {
-				callback()
+				if (result instanceof Error) { 
+					callback(result)
+					return
+				}
+
+				if (process.env.SHOULD_REMOVE_BRANCH) {
+					githubWrapper.removeBranch(branchName, function(error) {
+						callback(error)
+					})
+				} else {
+					callback("Done")
+				}
 			})
 		})
 	} else {
