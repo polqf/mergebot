@@ -24,7 +24,12 @@ app.listen(app.get('port'), function() {
 });
 
 app.post('/hook', function(request, response) {
-	var body = JSON.parse(request.body.payload)
+	var body = null
+	if (request.headers.host.includes("localhost")) {
+		body = request.body
+	} else {
+		body = JSON.parse(request.body.payload)
+	}
 
 	MergeBot.processBody(body, function(result) {
 		if (result instanceof Error) {
