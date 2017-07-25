@@ -60,15 +60,16 @@ MergeBot.processBody = function(body, callback) {
 				}
 
 				githubWrapper.grabComments(prNumber, function(result) {
-					var found = false;
+					var prMergeMethod = null;
 					for(var index in result) {
-						if (result[index].toLowerCase() === process.env.COMMIT_MESSAGE.toLowerCase()) {
-        					found = true;
+						var mergeMethod = MergeBot.mergeMethodFor(result[index])
+						if (mergeMethod != null) {
+        					prMergeMethod = mergeMethod;
         					break;
     					}
     				}
-    				if (found) {
-    					MergeBot.mergePR(githubWrapper, prNumber, branchName, function(error) {
+    				if (prMergeMethod != null) {
+    					MergeBot.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(error) {
     						if (succeeded instanceof Error) { 
 								callback(error)
 								return
@@ -82,6 +83,21 @@ MergeBot.processBody = function(body, callback) {
 			})
 		})
 	})
+}
+
+MergeBot.mergeMethodFor = function(originalMessage) {
+	var message = originalMessage.toLowerCase()
+	var user = process.env.BOT_USER.toLowerCase()
+	var expectedMessage = process.env.COMMIT_MESSAGE.toLowerCase()
+
+	if (message.includes(expectedMessage) == false || message.includes(user) == false) {
+		return null
+	}
+
+	if (message.includes("squash")) {
+		return "squash"
+	}
+	return "merge"
 }
 
 MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
@@ -114,10 +130,10 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
 	})
 }
 
-MergeBot.mergePR = function(githubWrapper, prNumber, branchName, callback) {
+MergeBot.mergePR = function(githubWrapper, prNumber, branchName, method, callback) {
 	if (process.env.SHOULD_MERGE) {
 		MergeBot.postAlertMessage(githubWrapper, prNumber, function() {
-			githubWrapper.mergePR(prNumber, function(result) {
+			githubWrapper.mergePR(prNumber, method, function(result) {
 				if (result instanceof Error) { 
 					callback(result)
 					return
