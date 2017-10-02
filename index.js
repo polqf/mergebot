@@ -25,13 +25,15 @@ app.listen(app.get('port'), function() {
 
 app.post('/hook', function(request, response) {
 	var body = null
+	var debug = false
 	if (request.headers.host.includes("localhost")) {
 		body = request.body
+		debug = true
 	} else {
 		body = JSON.parse(request.body.payload)
 	}
 
-	MergeBot.processBody(body, function(result) {
+	MergeBot.processBody(body, debug, function(result) {
 		if (result instanceof Error) {
 			response.status(503).send(result)
 			return

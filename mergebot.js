@@ -3,7 +3,12 @@ var GithubWrapper = require('./lib/githubwrapper');
 function MergeBot(path) {
 };
 
-MergeBot.processBody = function(body, callback) {
+MergeBot.processBody = function(body, debug, callback) {
+
+	function log(consoleLog) {
+		if (!debug) { return }
+		console.log(consoleLog)
+	}
 
 	if (body.state != "success") {
 		callback("Nothing to do here!")
@@ -20,13 +25,11 @@ MergeBot.processBody = function(body, callback) {
 		return
 	}
 
-///////////////////////////////////////////////////
-	console.log(prAuthor)
-	console.log(repoName)
-	console.log(repoOwner)
-	console.log(commitSHA)
-	console.log("-----------------")
-///////////////////////////////////////////////////
+	log(prAuthor)
+	log(repoName)
+	log(repoOwner)
+	log(commitSHA)
+	log("-----------------")
 
 	var githubWrapper = new GithubWrapper(repoOwner, repoName);
 	var logInResult = githubWrapper.logIn()
