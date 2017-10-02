@@ -99,6 +99,9 @@ MergeBot.prototype.mergeMethodFor = function(originalMessage) {
 	if (message.includes("squash")) {
 		return "squash"
 	}
+	if (message.includes("rebase")) {
+		return "rebase"
+	}
 	return "merge"
 }
 
