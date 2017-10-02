@@ -60,27 +60,36 @@ MergeBot.prototype.processBody = function(body, callback) {
 				}
 
 				Logger.log("PR Found: " + prNumber)
-				githubWrapper.grabComments(prNumber, function(result) {
-					var prMergeMethod = null;
-					for(var index in result) {
-						var mergeMethod = self.mergeMethodFor(result[index])
-						if (mergeMethod != null) {
-        					prMergeMethod = mergeMethod;
-        					break;
+
+				githubWrapper.isPullRequestApproved(prNumber, function(approved) {
+					if (approved == false) { 
+						callback("Missing PR approval") 
+						return
+					}
+
+					githubWrapper.grabComments(prNumber, function(result) {
+						var prMergeMethod = null;
+						for(var index in result) {
+							var mergeMethod = self.mergeMethodFor(result[index])
+							if (mergeMethod != null) {
+        						prMergeMethod = mergeMethod;
+        						break;
+    						}
     					}
-    				}
-    				if (prMergeMethod != null) {
-    					Logger.log("Expected message found")
-    					self.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(result) {
-    						if (result instanceof Error) { 
+    					if (prMergeMethod != null) {
+    						Logger.log("Expected message found")
+    						self.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(result) {
+	    						if (result instanceof Error) { 
+									callback(result)
+									return
+								}
 								callback(result)
-								return
-							}
-							callback(result)
-    					})
-    				} else {
-    					callback("Expected message not found")
-    				}
+    						})
+    					} else {
+    						callback("Expected message not found")
+    					}
+					})
+
 				})
 			})
 		})
