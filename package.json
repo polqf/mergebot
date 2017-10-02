@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Github bot that automagically merges PRs",
   "engines": {
-    "node": "5.9.1"
+    "node": "8.1.2"
   },
   "main": "index.js",
   "scripts": {
