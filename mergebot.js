@@ -5,7 +5,7 @@ function MergeBot() {
 };
 
 MergeBot.prototype.processBody = function(body, callback) {
-	if (body.state != "success") {
+	if (this.isSuccessfulBuildOrReview(body) == false) {
 		callback("Nothing to do here!")
 		return
 	}
@@ -13,7 +13,7 @@ MergeBot.prototype.processBody = function(body, callback) {
 	var prAuthor = body.sender.login
 	var repoOwner = body.repository.owner.login
 	var repoName = body.repository.name
-	var commitSHA = body.sha
+	var commitSHA = body.sha || body.pull_request.head.sha
 	
 	if (!prAuthor || !repoOwner || !repoName || !commitSHA) {
 		callback(new Error('Received unexpected input'))
@@ -94,6 +94,10 @@ MergeBot.prototype.processBody = function(body, callback) {
 			})
 		})
 	})
+}
+
+MergeBot.prototype.isSuccessfulBuildOrReview = function(hookBody) {
+	return hookBody.state == "success" || hookBody.action == "submitted"
 }
 
 MergeBot.prototype.mergeMethodFor = function(originalMessage) {
