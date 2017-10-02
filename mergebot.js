@@ -1,15 +1,10 @@
+var Logger = require ('./logger')
 var GithubWrapper = require('./lib/githubwrapper');
 
-function MergeBot(path) {
+function MergeBot() {
 };
 
-MergeBot.processBody = function(body, debug, callback) {
-
-	function log(consoleLog) {
-		if (!debug) { return }
-		console.log(consoleLog)
-	}
-
+MergeBot.prototype.processBody = function(body, callback) {
 	if (body.state != "success") {
 		callback("Nothing to do here!")
 		return
@@ -25,11 +20,11 @@ MergeBot.processBody = function(body, debug, callback) {
 		return
 	}
 
-	log(prAuthor)
-	log(repoName)
-	log(repoOwner)
-	log(commitSHA)
-	log("-----------------")
+	Logger.log(prAuthor)
+	Logger.log(repoName)
+	Logger.log(repoOwner)
+	Logger.log(commitSHA)
+	Logger.log("-----------------")
 
 	var githubWrapper = new GithubWrapper(repoOwner, repoName);
 	var logInResult = githubWrapper.logIn()
@@ -38,6 +33,8 @@ MergeBot.processBody = function(body, debug, callback) {
 		callback(logInResult)
 		return
 	}
+
+	var self = this
 
 	githubWrapper.allStatusesSucceeded(commitSHA, function(succeeded) {
 		if (succeeded instanceof Error) { 
@@ -56,28 +53,30 @@ MergeBot.processBody = function(body, debug, callback) {
 				return
 			}
 
-			MergeBot.processPRs(githubWrapper, result, 0, commitSHA, function(found, prNumber, branchName) {
+			self.processPRs(githubWrapper, result, 0, commitSHA, function(found, prNumber, branchName) {
 				if (found == false || prNumber == 0) {
     				callback("Did not find any PR with the given commit")
 					return
 				}
 
+				Logger.log("PR Found: " + prNumber)
 				githubWrapper.grabComments(prNumber, function(result) {
 					var prMergeMethod = null;
 					for(var index in result) {
-						var mergeMethod = MergeBot.mergeMethodFor(result[index])
+						var mergeMethod = self.mergeMethodFor(result[index])
 						if (mergeMethod != null) {
         					prMergeMethod = mergeMethod;
         					break;
     					}
     				}
     				if (prMergeMethod != null) {
-    					MergeBot.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(error) {
-    						if (succeeded instanceof Error) { 
-								callback(error)
+    					Logger.log("Expected message found")
+    					self.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(result) {
+    						if (result instanceof Error) { 
+								callback(result)
 								return
 							}
-							callback("Expected message found")
+							callback(result)
     					})
     				} else {
     					callback("Expected message not found")
@@ -88,7 +87,7 @@ MergeBot.processBody = function(body, debug, callback) {
 	})
 }
 
-MergeBot.mergeMethodFor = function(originalMessage) {
+MergeBot.prototype.mergeMethodFor = function(originalMessage) {
 	var message = originalMessage.toLowerCase()
 	var user = process.env.BOT_USER.toLowerCase()
 	var expectedMessage = process.env.COMMIT_MESSAGE.toLowerCase()
@@ -103,7 +102,7 @@ MergeBot.mergeMethodFor = function(originalMessage) {
 	return "merge"
 }
 
-MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
+MergeBot.prototype.processPRs = function(githubWrapper, prs, index, sha, callback) {
 	if (index > prs.length - 1) {
 		callback(false, 0)
 		return
@@ -114,6 +113,7 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
 	var prRef = pr.head.ref
 	var currentIndex = index
 	var currentCallback = callback
+	var self = this
 
 	githubWrapper.grabCommits(prNumber, function(result) {
 		var found = false;
@@ -129,13 +129,13 @@ MergeBot.processPRs = function(githubWrapper, prs, index, sha, callback) {
     		return
     	}
 
-    	MergeBot.processPRs(githubWrapper, prs, ++currentIndex, sha, currentCallback)
+    	self.processPRs(githubWrapper, prs, ++currentIndex, sha, currentCallback)
 	})
 }
 
-MergeBot.mergePR = function(githubWrapper, prNumber, branchName, method, callback) {
+MergeBot.prototype.mergePR = function(githubWrapper, prNumber, branchName, method, callback) {
 	if (process.env.SHOULD_MERGE) {
-		MergeBot.postAlertMessage(githubWrapper, prNumber, function() {
+		this.postAlertMessage(githubWrapper, prNumber, function() {
 			githubWrapper.mergePR(prNumber, method, function(result) {
 				if (result instanceof Error) { 
 					callback(result)
@@ -144,7 +144,7 @@ MergeBot.mergePR = function(githubWrapper, prNumber, branchName, method, callbac
 
 				if (process.env.SHOULD_REMOVE_BRANCH) {
 					githubWrapper.removeBranch(branchName, function(error) {
-						callback(error)
+						callback((error instanceof Error) ? error : "Done")
 					})
 				} else {
 					callback("Done")
@@ -152,13 +152,13 @@ MergeBot.mergePR = function(githubWrapper, prNumber, branchName, method, callbac
 			})
 		})
 	} else {
-		MergeBot.postAlertMessage(githubWrapper, prNumber, function() {
+		this.postAlertMessage(githubWrapper, prNumber, function() {
 			callback()
 		})
 	}
 }
 
-MergeBot.postAlertMessage = function(githubWrapper, prNumber, callback) {
+MergeBot.prototype.postAlertMessage = function(githubWrapper, prNumber, callback) {
 	var message = process.env.ALERT_MESSAGE
 
 	var gifs = ["https://media.giphy.com/media/143vPc6b08locw/giphy.gif",
@@ -172,7 +172,7 @@ MergeBot.postAlertMessage = function(githubWrapper, prNumber, callback) {
 	message = message + "\n![](" + gifs[randomIndex] + ")"
 
 	githubWrapper.commentOnPullRequest(prNumber, message, function(result) {
-		callback()
+		callback(result)
 	})
 }
 

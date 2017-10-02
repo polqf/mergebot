@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var MergeBot = require('./mergebot');
+var Logger = require ('./logger')
 
 var app = express();
 
@@ -25,15 +26,17 @@ app.listen(app.get('port'), function() {
 
 app.post('/hook', function(request, response) {
 	var body = null
-	var debug = false
+
 	if (request.headers.host.includes("localhost")) {
 		body = request.body
-		debug = true
+		global.debug = true
 	} else {
 		body = JSON.parse(request.body.payload)
 	}
 
-	MergeBot.processBody(body, debug, function(result) {
+	var mergeBot = new MergeBot();
+	mergeBot.processBody(body, function(result) {
+		Logger.log(result)
 		if (result instanceof Error) {
 			response.status(503).send(result)
 			return
