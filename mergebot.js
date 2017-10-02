@@ -5,7 +5,7 @@ function MergeBot() {
 };
 
 MergeBot.prototype.processBody = function(body, callback) {
-	if (body.state != "success") {
+	if (this.isSuccessfulBuildOrReview(body) == false) {
 		callback("Nothing to do here!")
 		return
 	}
@@ -13,7 +13,7 @@ MergeBot.prototype.processBody = function(body, callback) {
 	var prAuthor = body.sender.login
 	var repoOwner = body.repository.owner.login
 	var repoName = body.repository.name
-	var commitSHA = body.sha
+	var commitSHA = body.sha || body.pull_request.head.sha
 	
 	if (!prAuthor || !repoOwner || !repoName || !commitSHA) {
 		callback(new Error('Received unexpected input'))
@@ -55,36 +55,52 @@ MergeBot.prototype.processBody = function(body, callback) {
 
 			self.processPRs(githubWrapper, result, 0, commitSHA, function(found, prNumber, branchName) {
 				if (found == false || prNumber == 0) {
-    				callback("Did not find any PR with the given commit")
+					callback("Did not find any PR with the given commit")
 					return
 				}
 
 				Logger.log("PR Found: " + prNumber)
+
 				githubWrapper.grabComments(prNumber, function(result) {
 					var prMergeMethod = null;
 					for(var index in result) {
 						var mergeMethod = self.mergeMethodFor(result[index])
 						if (mergeMethod != null) {
-        					prMergeMethod = mergeMethod;
-        					break;
-    					}
-    				}
-    				if (prMergeMethod != null) {
-    					Logger.log("Expected message found")
-    					self.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(result) {
-    						if (result instanceof Error) { 
+							prMergeMethod = mergeMethod;
+							break;
+						}
+					}
+
+					if (prMergeMethod == null) {
+						callback("Expected message not found")
+						return
+					}
+
+					Logger.log("Expected message found")
+
+					self.notifyMergeability(githubWrapper, prNumber, function(canMerge) {
+						if (canMerge == false) {
+							callback("Missing PR Review")
+							return
+						}
+
+						self.mergePR(githubWrapper, prNumber, branchName, prMergeMethod, function(result) {
+							if (result instanceof Error) { 
 								callback(result)
 								return
 							}
 							callback(result)
-    					})
-    				} else {
-    					callback("Expected message not found")
-    				}
+						})
+					})
 				})
+
 			})
 		})
 	})
+}
+
+MergeBot.prototype.isSuccessfulBuildOrReview = function(hookBody) {
+	return hookBody.state == "success" || hookBody.action == "submitted"
 }
 
 MergeBot.prototype.mergeMethodFor = function(originalMessage) {
@@ -121,18 +137,18 @@ MergeBot.prototype.processPRs = function(githubWrapper, prs, index, sha, callbac
 	githubWrapper.grabCommits(prNumber, function(result) {
 		var found = false;
 		for(var index in result) {
-    		if (result[index] == sha) {
-        		found = true;
-        		break;
-    		}
-    	}
+			if (result[index] == sha) {
+				found = true;
+				break;
+			}
+		}
 
-    	if (found) {
-    		callback(found, prNumber, prRef)
-    		return
-    	}
+		if (found) {
+			callback(found, prNumber, prRef)
+			return
+		}
 
-    	self.processPRs(githubWrapper, prs, ++currentIndex, sha, currentCallback)
+		self.processPRs(githubWrapper, prs, ++currentIndex, sha, currentCallback)
 	})
 }
 
@@ -161,16 +177,30 @@ MergeBot.prototype.mergePR = function(githubWrapper, prNumber, branchName, metho
 	}
 }
 
+MergeBot.prototype.notifyMergeability = function(githubWrapper, prNumber, callback) {
+	githubWrapper.isPullRequestApproved(prNumber, function(approved) {
+		if (approved == false) { 
+			var message = "Missing PR Review"
+			githubWrapper.commentOnPullRequest(prNumber, message, function(result) {
+				callback(false)
+			})
+			return
+		}
+
+		callback(true)
+	}
+}
+
 MergeBot.prototype.postAlertMessage = function(githubWrapper, prNumber, callback) {
 	var message = process.env.ALERT_MESSAGE
 
 	var gifs = ["https://media.giphy.com/media/143vPc6b08locw/giphy.gif",
-				"https://media1.giphy.com/media/Hw8vYF4DNRCKY/giphy.gif",
-				"https://media4.giphy.com/media/ta83CqOoRwfwQ/giphy.gif",
-				"https://media4.giphy.com/media/vMNoKKznOrUJi/giphy.gif",
-				"https://media0.giphy.com/media/DAC7d6rb1YHbq/giphy.gif",
-				"https://media.giphy.com/media/woWz6RL33Hm3S/giphy.gif",
-				"http://media.giphy.com/media/tDafHUBVrRKtq/giphy.gif"]
+	"https://media1.giphy.com/media/Hw8vYF4DNRCKY/giphy.gif",
+	"https://media4.giphy.com/media/ta83CqOoRwfwQ/giphy.gif",
+	"https://media4.giphy.com/media/vMNoKKznOrUJi/giphy.gif",
+	"https://media0.giphy.com/media/DAC7d6rb1YHbq/giphy.gif",
+	"https://media.giphy.com/media/woWz6RL33Hm3S/giphy.gif",
+	"http://media.giphy.com/media/tDafHUBVrRKtq/giphy.gif"]
 	var randomIndex = Math.floor(Math.random() * gifs.length)
 	message = message + "\n![](" + gifs[randomIndex] + ")"
 
