@@ -2,6 +2,7 @@ var Logger = require ('./logger')
 var GithubWrapper = require('./lib/githubwrapper');
 
 function MergeBot() {
+	this.prAuthor = null
 };
 
 MergeBot.prototype.processBody = function(body, callback) {
@@ -19,6 +20,8 @@ MergeBot.prototype.processBody = function(body, callback) {
 		callback(new Error('Received unexpected input'))
 		return
 	}
+
+	this.prAuthor = prAuthor
 
 	Logger.log(prAuthor)
 	Logger.log(repoName)
@@ -190,6 +193,7 @@ MergeBot.prototype.notifyMergeability = function(githubWrapper, prNumber, callba
 		var approved = true
 
 		Object.keys(reviews).forEach(function(user) {
+			if (user == self.prAuthor) { return; }
 			var value = reviews[user]
 			approved = approved && value == "approved"
 			message = message + "@" + user + "  " + self.emojiForState(value) + "\n"
