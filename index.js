@@ -1,7 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var MergeBot = require('./mergebot');
-var Logger = require ('./logger')
+var MergeBot = require('./lib/mergebot');
+var Logger = require ('./lib/logger')
 
 var app = express();
 
@@ -29,7 +29,7 @@ app.post('/hook', function(request, response) {
 
 	if (request.headers.host.includes("localhost")) {
 		body = request.body
-		global.debug = true
+		// global.debug = true
 	} else {
 		body = JSON.parse(request.body.payload)
 	}
