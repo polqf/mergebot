@@ -29,7 +29,7 @@ app.post('/hook', function(request, response) {
 
 	if (request.headers.host.includes("localhost")) {
 		body = request.body
-		// global.debug = true
+		global.debug = true
 	} else {
 		body = JSON.parse(request.body.payload)
 	}
