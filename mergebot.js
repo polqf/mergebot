@@ -65,15 +65,7 @@ MergeBot.prototype.processBody = function(body, callback) {
 				Logger.log("PR Found: " + prNumber)
 
 				githubWrapper.grabComments(prNumber, function(result) {
-					var prMergeMethod = null;
-					for(var index in result) {
-						var mergeMethod = self.mergeMethodFor(result[index])
-						if (mergeMethod != null) {
-							prMergeMethod = mergeMethod;
-							break;
-						}
-					}
-
+					var prMergeMethod = self.mergeMethodOnComments(result)
 					if (prMergeMethod == null) {
 						callback("Expected message not found")
 						return
@@ -104,6 +96,18 @@ MergeBot.prototype.processBody = function(body, callback) {
 
 MergeBot.prototype.isSuccessfulBuildOrReview = function(hookBody) {
 	return hookBody.state == "success" || hookBody.action == "submitted"
+}
+
+MergeBot.prototype.mergeMethodOnComments = function(comments) {
+	var prMergeMethod = null;
+	for(var index in comments) {
+		var mergeMethod = this.mergeMethodFor(comments[index])
+		if (mergeMethod != null) {
+			prMergeMethod = mergeMethod;
+			break;
+		}
+	}
+	return prMergeMethod
 }
 
 MergeBot.prototype.mergeMethodFor = function(originalMessage) {
