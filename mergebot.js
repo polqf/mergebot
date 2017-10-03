@@ -178,17 +178,44 @@ MergeBot.prototype.mergePR = function(githubWrapper, prNumber, branchName, metho
 }
 
 MergeBot.prototype.notifyMergeability = function(githubWrapper, prNumber, callback) {
-	githubWrapper.isPullRequestApproved(prNumber, function(approved) {
-		if (approved == false) {
-			var message = "Missing PR Review"
-			githubWrapper.commentOnPullRequest(prNumber, message, function(result) {
-				callback(false)
-			})
+	var self = this
+
+	githubWrapper.reviewReport(prNumber, function(reviews) {
+		if (reviews instanceof Error) {
+			callback(reviews)
 			return
 		}
 
-		callback(true)
+		var message = "### PR Review status :bar_chart:\n\n"
+		var approved = true
+
+		Object.keys(reviews).forEach(function(user) {
+			var value = reviews[user]
+			approved = approved && value == "approved"
+			message = message + "@" + user + "  " + self.emojiForState(value) + "\n"
+		})
+
+		if (approved || reviews.count == 0) {
+			callback(true)
+			return
+		}
+
+
+		githubWrapper.commentOnPullRequest(prNumber, message, function(result) {
+			callback(false)
+		})
 	})
+}
+
+MergeBot.prototype.emojiForState = function(state) {
+	switch(state) {
+		case "approved":
+			return ":white_check_mark:"
+		case "commented":
+			return ":speech_balloon:"
+		case "changes_requested":
+			return ":x:"
+	}
 }
 
 MergeBot.prototype.postAlertMessage = function(githubWrapper, prNumber, callback) {
