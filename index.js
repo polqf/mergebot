@@ -48,17 +48,8 @@ app.post('/hook', function(request, response) {
 });
 
 app.post('/slash_command', function(request, response) {
-	var body = null
-
-	if (request.headers.host.includes("localhost")) {
-		body = request.body
-		global.debug = true
-	} else {
-		body = JSON.parse(request.body.payload)
-	}
-
 	var slackCommand = new SlackCommand();
-	slackCommand.processBody(body, function(result) {
+	slackCommand.processBody(request.body, function(result) {
 		Logger.log(result)
 		if (result instanceof Error) {
 			response.status(503).send(result)
