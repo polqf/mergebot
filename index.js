@@ -45,3 +45,14 @@ app.post('/hook', function(request, response) {
 		response.send(result)
 	})
 });
+
+app.post('/slash_command', function(request, response) {
+	var body = null
+
+	if (request.headers.host.includes("localhost")) {
+		body = request.body
+		global.debug = true
+	} else {
+		body = JSON.parse(request.body.payload)
+	}
+});
