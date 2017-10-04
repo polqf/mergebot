@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var MergeBot = require('./lib/mergebot');
+var SlackCommand = require('./lib/slackcommand');
 var Logger = require ('./lib/logger')
 
 var app = express();
@@ -36,6 +37,28 @@ app.post('/hook', function(request, response) {
 
 	var mergeBot = new MergeBot();
 	mergeBot.processBody(body, function(result) {
+		Logger.log(result)
+		if (result instanceof Error) {
+			response.status(503).send(result)
+			return
+		}
+
+		response.send(result)
+	})
+});
+
+app.post('/slash_command', function(request, response) {
+	var body = null
+
+	if (request.headers.host.includes("localhost")) {
+		body = request.body
+		global.debug = true
+	} else {
+		body = JSON.parse(request.body.payload)
+	}
+
+	var slackCommand = new SlackCommand();
+	slackCommand.processBody(body, function(result) {
 		Logger.log(result)
 		if (result instanceof Error) {
 			response.status(503).send(result)
