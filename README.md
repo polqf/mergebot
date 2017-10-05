@@ -9,6 +9,8 @@ Environment variables:
 - `GITHUB_ALERT_MESSAGE`: Message that is going to post when CI succeeds
 - `GITHUB_BOT_USER`: Github user to be mentioned when willing to execute mergebot
 - `GITHUB_OAUTH_TOKEN`: Github OAuth Token
+- `GITHUB_REPO_NAME`: Github repository name
+- `GITHUB_REPO_OWNER`: Github reposotory owner (either the organization or the user)
 - `SHOULD_MERGE`: Flag to detemine if the bot should merge or not (if not set, it just posts a comment)
 - `SHOULD_REMOVE_BRANCH`: Flag that detemines if the branch should be deleted after the merge
 - `SLACK_BOT_TOKEN`: Slack bot custom integration token
